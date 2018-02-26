@@ -170,6 +170,7 @@ def get_altitude(jds, ra, dec, lat, lon, alt):
                                  alt=alt)
     return alt, jds
 
+
 class VisibilityChart:
     """
     This class creates a complete visibility chart for targets.
@@ -258,16 +259,10 @@ class VisibilityChart:
         :param targets: Table or numpy.ndarray with the targets
         :param jds: List with jds of the night (plot dates)
         """
-        num = len(jds)
         if type(targets) is dict:
             # calculate the altitude, azimuth and hour angle of the target
             # at the JDs
-            alt, az, hour = pyasl.eq2hor(jds,
-                                         np.linspace(targets['ra'], targets['ra'], num=num),
-                                         np.linspace(targets['dec'], targets['dec'], num=num),
-                                         lat=self.location.latitude,
-                                         lon=self.location.longitude,
-                                         alt=self.location.altitude)
+            alt, az, hour = get_altitude_azimuth_hourangle(jds, targets['ra'], targets['dec'], self.location)
             # convert the JDs back to datetime objects
             times = Time(jds, format='jd').datetime
             # draw the visibility curve
@@ -276,12 +271,8 @@ class VisibilityChart:
         for t in targets:
             # calculate the altitude, azimuth and hour angle of the target
             # at the JDs
-            alt, az, hour = pyasl.eq2hor(jds,
-                                         np.linspace(t['ra'], t['ra'], num=num),
-                                         np.linspace(t['dec'], t['dec'], num=num), 
-                                         lat=self.location.latitude,
-                                         lon=self.location.longitude, 
-                                         alt=self.location.altitude)
+
+            alt, az, hour = get_altitude_azimuth_hourangle(jds, t['ra'], t['dec'], self.location)
             # convert the JDs back to datetime objects
             times = Time(jds, format='jd').datetime
             # draw the visibility curve
@@ -382,18 +373,23 @@ def get_location_data(location):
         return LA_PALMA
     elif location == 'Tautenburg':
         return TAUTENBURG
-    
-# direct run (testing)
 
 
-#if __name__ == '__main__':
-#    vc = VisibilityChart(location=TAUTENBURG)
-#    from astropy.table import Table
-#    
-#    tab = Table()
-#    tab['ra'] = [20.0, 50.0]
-#    tab['dec'] = [25.0, 25.0]
-#    tab['name'] = 'test'
-#    start_date = datetime.utcnow()
-#    end_date = start_date+timedelta(hours=12)
-#    sp_chart = vc.create_chart(tab, start_date)
+def get_altitude_azimuth_hourangle(jds, ra, dec, location, num=100):
+
+    if type(jds) == int or type(jds) == float:
+        jds = np.linspace(jds, jds+1, num=num)
+    else:
+        num = len(jds)
+
+    if type(location) != Location:
+        location = get_location_data(location)
+    ra = np.linspace(ra, ra, num=num)
+    dec = np.linspace(dec, dec, num=num)
+    alt, az, hour = pyasl.eq2hor(jds,
+                                 ra,
+                                 dec,
+                                 lat=location.latitude,
+                                 lon=location.longitude,
+                                 alt=location.altitude)
+    return alt, az, hour
